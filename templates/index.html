@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Insurance Cost Predictor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F5F7F6;
+    --surface:#FFFFFF;
+    --ink:#16262B;
+    --ink-muted:#5B6D71;
+    --line:#DCE6E4;
+    --teal:#0E7C7B;
+    --teal-soft:#E4F1F0;
+    --blue:#2B6CB0;
+    --coral:#E1543A;
+    --amber:#D9A441;
+    --radius:14px;
+    --risk-color:#0E7C7B;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{
+    margin:0;
+    padding:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  ::selection{ background:var(--teal-soft); color:var(--teal); }
+
+  /* ---------- Ambient vitals strip ---------- */
+  .vitals-strip{
+    position:relative;
+    width:100%;
+    height:64px;
+    background:var(--surface);
+    border-bottom:1px solid var(--line);
+    overflow:hidden;
+  }
+  .vitals-strip svg{
+    width:200%;
+    height:100%;
+    display:block;
+  }
+  .vitals-path{
+    fill:none;
+    stroke:var(--risk-color);
+    stroke-width:2;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+    transition:stroke 0.6s ease;
+  }
+  .vitals-strip.animate svg{
+    animation:scrollLine 6s linear infinite;
+  }
+  @keyframes scrollLine{
+    from{ transform:translateX(0); }
+    to{ transform:translateX(-50%); }
+  }
+  .vitals-label{
+    position:absolute;
+    top:10px;
+    left:20px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.08em;
+    color:var(--ink-muted);
+    z-index:2;
+    background:var(--surface);
+    padding-right:8px;
+  }
+  .vitals-label .dot{
+    display:inline-block;
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:var(--risk-color);
+    margin-right:6px;
+    transition:background 0.6s ease;
+    animation:pulseDot 1.4s ease-in-out infinite;
+  }
+  @keyframes pulseDot{
+    0%,100%{ opacity:1; }
+    50%{ opacity:0.35; }
+  }
+
+  /* ---------- Shell ---------- */
+  .shell{
+    max-width:720px;
+    margin:0 auto;
+    padding:48px 24px 80px;
+  }
+
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--teal);
+    margin:0 0 12px;
+  }
+
+  h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:clamp(28px, 5vw, 40px);
+    font-weight:700;
+    letter-spacing:-0.01em;
+    margin:0 0 10px;
+    line-height:1.1;
+  }
+
+  .subhead{
+    color:var(--ink-muted);
+    font-size:15px;
+    line-height:1.6;
+    max-width:52ch;
+    margin:0 0 40px;
+  }
+
+  /* ---------- Chart card ---------- */
+  .chart-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+
+  .chart-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:18px 24px;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, #FBFDFD, #FFFFFF);
+  }
+  .chart-header .id{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--ink-muted);
+    letter-spacing:0.05em;
+  }
+  .chart-header .status{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.08em;
+    color:var(--teal);
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .chart-header .status::before{
+    content:'';
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:var(--teal);
+  }
+
+  form{ padding:8px 24px 24px; }
+
+  .field-group{
+    padding:20px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .field-group:last-of-type{ border-bottom:none; }
+
+  .field-row{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:14px;
+  }
+
+  .field-label{
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .field-caption{
+    font-size:12px;
+    color:var(--ink-muted);
+    margin-top:2px;
+  }
+
+  .readout{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:20px;
+    font-weight:500;
+    color:var(--teal);
+    min-width:70px;
+    text-align:right;
+  }
+  .readout .unit{
+    font-size:12px;
+    color:var(--ink-muted);
+    margin-left:2px;
+  }
+
+  /* range slider, clinical dial look */
+  input[type="range"]{
+    appearance:none;
+    -webkit-appearance:none;
+    width:100%;
+    height:6px;
+    border-radius:3px;
+    background:linear-gradient(to right, var(--teal) 0%, var(--teal) var(--fill,50%), var(--line) var(--fill,50%), var(--line) 100%);
+    outline:none;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    background:var(--surface);
+    border:3px solid var(--teal);
+    cursor:pointer;
+    box-shadow:0 1px 3px rgba(0,0,0,0.15);
+    transition:transform 0.15s ease;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover{ transform:scale(1.08); }
+  input[type="range"]::-moz-range-thumb{
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    background:var(--surface);
+    border:3px solid var(--teal);
+    cursor:pointer;
+  }
+  input[type="range"]:focus-visible::-webkit-slider-thumb{
+    outline:2px solid var(--blue);
+    outline-offset:2px;
+  }
+
+  /* stepper for children */
+  .stepper{
+    display:flex;
+    align-items:center;
+    gap:0;
+    border:1px solid var(--line);
+    border-radius:10px;
+    overflow:hidden;
+    width:fit-content;
+  }
+  .stepper button{
+    width:38px;
+    height:38px;
+    border:none;
+    background:var(--surface);
+    color:var(--teal);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:18px;
+    cursor:pointer;
+  }
+  .stepper button:hover{ background:var(--teal-soft); }
+  .stepper button:focus-visible{ outline:2px solid var(--blue); outline-offset:-2px; }
+  .stepper input{
+    width:52px;
+    height:38px;
+    border:none;
+    border-left:1px solid var(--line);
+    border-right:1px solid var(--line);
+    text-align:center;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:15px;
+    color:var(--ink);
+    background:var(--surface);
+  }
+  .stepper input:focus-visible{ outline:2px solid var(--blue); outline-offset:-2px; }
+
+  /* segmented toggle for smoker / sex */
+  .segmented{
+    display:flex;
+    border:1px solid var(--line);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .segmented input{
+    position:absolute;
+    opacity:0;
+    pointer-events:none;
+  }
+  .segmented label{
+    flex:1;
+    text-align:center;
+    padding:10px 12px;
+    font-size:13px;
+    font-weight:500;
+    color:var(--ink-muted);
+    cursor:pointer;
+    transition:background 0.15s ease, color 0.15s ease;
+    border-right:1px solid var(--line);
+  }
+  .segmented label:last-child{ border-right:none; }
+  .segmented input:checked + label{
+    background:var(--teal);
+    color:#fff;
+  }
+  .segmented input:focus-visible + label{
+    outline:2px solid var(--blue);
+    outline-offset:-2px;
+  }
+  .segmented.risk input:checked + label{
+    background:var(--coral);
+  }
+
+  /* region grid */
+  .region-grid{
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:8px;
+  }
+  .region-grid input{
+    position:absolute;
+    opacity:0;
+    pointer-events:none;
+  }
+  .region-grid label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:12px 14px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    font-size:13px;
+    font-weight:500;
+    color:var(--ink-muted);
+    cursor:pointer;
+    text-transform:capitalize;
+    transition:border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+  }
+  .region-grid label::before{
+    content:'';
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    border:1.5px solid var(--ink-muted);
+    flex-shrink:0;
+    transition:background 0.15s ease, border-color 0.15s ease;
+  }
+  .region-grid input:checked + label{
+    border-color:var(--teal);
+    background:var(--teal-soft);
+    color:var(--teal);
+  }
+  .region-grid input:checked + label::before{
+    background:var(--teal);
+    border-color:var(--teal);
+  }
+  .region-grid input:focus-visible + label{
+    outline:2px solid var(--blue);
+    outline-offset:1px;
+  }
+
+  /* submit */
+  .submit-row{
+    padding:24px 0 4px;
+  }
+  button.submit{
+    width:100%;
+    padding:16px;
+    border:none;
+    border-radius:10px;
+    background:var(--ink);
+    color:#fff;
+    font-family:'Space Grotesk', sans-serif;
+    font-size:15px;
+    font-weight:600;
+    letter-spacing:0.01em;
+    cursor:pointer;
+    transition:background 0.15s ease, transform 0.1s ease;
+  }
+  button.submit:hover{ background:#0E7C7B; }
+  button.submit:active{ transform:scale(0.99); }
+  button.submit:focus-visible{ outline:2px solid var(--blue); outline-offset:2px; }
+
+  /* ---------- Result readout ---------- */
+  .result-card{
+    margin-top:24px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:28px 24px;
+    display:none;
+  }
+  .result-card.show{ display:block; }
+  .result-eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--ink-muted);
+    margin:0 0 8px;
+  }
+  .result-figure{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:clamp(36px, 7vw, 52px);
+    font-weight:700;
+    color:var(--risk-color);
+    margin:0;
+    transition:color 0.6s ease;
+  }
+  .result-band{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--ink-muted);
+    margin-top:10px;
+  }
+
+  footer{
+    text-align:center;
+    font-size:12px;
+    color:var(--ink-muted);
+    margin-top:32px;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .vitals-strip.animate svg{ animation:none; }
+    .vitals-label .dot{ animation:none; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="vitals-strip animate" id="vitalsStrip">
+    <span class="vitals-label"><span class="dot"></span>ESTIMATED RISK TRACE</span>
+    <svg viewBox="0 0 1200 64" preserveAspectRatio="none">
+      <path class="vitals-path" id="vitalsPath1" d="" />
+    </svg>
+  </div>
+
+  <div class="shell">
+    <p class="eyebrow">Predictive Health Economics &middot; Estimate Tool</p>
+    <h1>Insurance Cost Predictor</h1>
+    <p class="subhead">Enter a few patient details below to generate an estimated annual medical insurance cost, modeled from historical claims data.</p>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <span class="id">CHART&nbsp;#EST-{{ range(1000, 9999) | random }}</span>
+        <span class="status">Ready</span>
+      </div>
+
+      <form action="/predict" method="post" id="predictForm">
+
+        <div class="field-group">
+          <div class="field-row">
+            <div>
+              <div class="field-label">Age</div>
+              <div class="field-caption">Patient age in years</div>
+            </div>
+            <div class="readout"><span id="ageOut">30</span><span class="unit">yrs</span></div>
+          </div>
+          <input type="range" name="age" id="ageRange" min="18" max="100" value="30" step="1">
+        </div>
+
+        <div class="field-group">
+          <div class="field-row">
+            <div>
+              <div class="field-label">Body mass index</div>
+              <div class="field-caption">BMI, kg/m&sup2;</div>
+            </div>
+            <div class="readout"><span id="bmiOut">24.0</span><span class="unit">bmi</span></div>
+          </div>
+          <input type="range" name="bmi" id="bmiRange" min="12" max="55" value="24" step="0.1">
+        </div>
+
+        <div class="field-group">
+          <div class="field-row">
+            <div>
+              <div class="field-label">Children</div>
+              <div class="field-caption">Number of dependents covered</div>
+            </div>
+          </div>
+          <div class="stepper">
+            <button type="button" id="childMinus" aria-label="Decrease children">&minus;</button>
+            <input type="number" name="children" id="childrenInput" value="0" min="0" max="12" readonly>
+            <button type="button" id="childPlus" aria-label="Increase children">+</button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-row">
+            <div>
+              <div class="field-label">Smoking status</div>
+              <div class="field-caption">Current tobacco use</div>
+            </div>
+          </div>
+          <div class="segmented risk">
+            <input type="radio" name="smoker" id="smokerNo" value="no" checked>
+            <label for="smokerNo">Non-smoker</label>
+            <input type="radio" name="smoker" id="smokerYes" value="yes">
+            <label for="smokerYes">Smoker</label>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-row">
+            <div>
+              <div class="field-label">Sex</div>
+              <div class="field-caption">As recorded on policy</div>
+            </div>
+          </div>
+          <div class="segmented">
+            <input type="radio" name="sex" id="sexFemale" value="female" checked>
+            <label for="sexFemale">Female</label>
+            <input type="radio" name="sex" id="sexMale" value="male">
+            <label for="sexMale">Male</label>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-row">
+            <div>
+              <div class="field-label">Region</div>
+              <div class="field-caption">Primary residence</div>
+            </div>
+          </div>
+          <div class="region-grid">
+            <input type="radio" name="region" id="regionNE" value="0" checked>
+            <label for="regionNE">northeast</label>
+            <input type="radio" name="region" id="regionNW" value="1">
+            <label for="regionNW">northwest</label>
+            <input type="radio" name="region" id="regionSE" value="2">
+            <label for="regionSE">southeast</label>
+            <input type="radio" name="region" id="regionSW" value="3">
+            <label for="regionSW">southwest</label>
+          </div>
+        </div>
+
+        <div class="submit-row">
+          <button type="submit" class="submit">Calculate estimate</button>
+        </div>
+
+      </form>
+    </div>
+
+    {% if prediction_text %}
+    <div class="result-card show" id="resultCard" data-prediction="{{ prediction_text }}">
+      <p class="result-eyebrow">Estimated annual cost</p>
+      <p class="result-figure" id="resultFigure">{{ prediction_text }}</p>
+      <p class="result-band" id="resultBand"></p>
+    </div>
+    {% endif %}
+
+    <footer>Estimates are generated from a statistical model and are not a quote or guarantee of coverage cost.</footer>
+  </div>
+
+<script>
+  // ----- live readouts for sliders -----
+  const ageRange = document.getElementById('ageRange');
+  const ageOut = document.getElementById('ageOut');
+  function updateAge(){
+    ageOut.textContent = ageRange.value;
+    const pct = (ageRange.value - ageRange.min) / (ageRange.max - ageRange.min) * 100;
+    ageRange.style.setProperty('--fill', pct + '%');
+  }
+  ageRange.addEventListener('input', updateAge);
+  updateAge();
+
+  const bmiRange = document.getElementById('bmiRange');
+  const bmiOut = document.getElementById('bmiOut');
+  function updateBmi(){
+    bmiOut.textContent = parseFloat(bmiRange.value).toFixed(1);
+    const pct = (bmiRange.value - bmiRange.min) / (bmiRange.max - bmiRange.min) * 100;
+    bmiRange.style.setProperty('--fill', pct + '%');
+  }
+  bmiRange.addEventListener('input', updateBmi);
+  updateBmi();
+
+  // ----- children stepper -----
+  const childrenInput = document.getElementById('childrenInput');
+  document.getElementById('childMinus').addEventListener('click', () => {
+    childrenInput.value = Math.max(0, parseInt(childrenInput.value) - 1);
+  });
+  document.getElementById('childPlus').addEventListener('click', () => {
+    childrenInput.value = Math.min(12, parseInt(childrenInput.value) + 1);
+  });
+
+  // ----- vitals waveform generator -----
+  function buildWavePath(amplitude, jitter, width, height){
+    // draws a repeating heartbeat-style waveform across the given width
+    const mid = height / 2;
+    let d = `M0 ${mid}`;
+    const segment = 60;
+    let x = 0;
+    while (x < width){
+      d += ` L${x+segment*0.3} ${mid}`;
+      d += ` L${x+segment*0.4} ${mid - amplitude*0.4}`;
+      d += ` L${x+segment*0.5} ${mid + amplitude}`;
+      d += ` L${x+segment*0.58} ${mid - amplitude*1.6 - jitter}`;
+      d += ` L${x+segment*0.66} ${mid + amplitude*0.5}`;
+      d += ` L${x+segment*0.8} ${mid}`;
+      x += segment;
+    }
+    d += ` L${width} ${mid}`;
+    return d;
+  }
+
+  const path1 = document.getElementById('vitalsPath1');
+  const strip = document.getElementById('vitalsStrip');
+
+  function setRiskLevel(level){
+    // level: 'low' | 'mid' | 'high'
+    const colors = { low:'#0E7C7B', mid:'#D9A441', high:'#E1543A' };
+    const amps   = { low:6, mid:11, high:18 };
+    const jitter = { low:0, mid:4, high:14 };
+    document.documentElement.style.setProperty('--risk-color', colors[level]);
+    const d = buildWavePath(amps[level], jitter[level], 2400, 64);
+    path1.setAttribute('d', d);
+  }
+
+  // default calm trace
+  setRiskLevel('low');
+
+  // ----- react to a prediction result, if present -----
+  const resultCard = document.getElementById('resultCard');
+  if (resultCard){
+    const raw = resultCard.getAttribute('data-prediction') || '';
+    const match = raw.replace(/,/g, '').match(/[\d.]+/);
+    const value = match ? parseFloat(match[0]) : null;
+    const band = document.getElementById('resultBand');
+
+    if (value !== null){
+      let level = 'low', bandText = 'Within typical range for this profile.';
+      if (value >= 25000){
+        level = 'high';
+        bandText = 'Above typical range — smoking status and BMI are the largest drivers.';
+      } else if (value >= 10000){
+        level = 'mid';
+        bandText = 'Moderate range for this profile.';
+      }
+      setRiskLevel(level);
+      band.textContent = bandText;
+    }
+
+    resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+</script>
+
+</body>
+</html>
